@@ -19,7 +19,12 @@ A ideia é que quanto mais um arquivo sofre mudanças e correções, maior a cha
 ---
 
 ## 3) Tecnologias possíveis
-- **Python** para implementação.  
-- **GitPython** ou **PyDriller** para ler histórico de commits.  
+- **Python** para implementação.
+- **GitPython** e **PyDriller** para ler histórico de commits.  
 - **pandas** para organizar e gerar a lista de arquivos.  
-- **argparse** para criar a interface de linha de comando.  
+- **argparse** para criar a interface de linha de comando.
+
+## 4) Repositórios Analisados
+- https://github.com/huggingface/transformers
+- https://github.com/tensorflow/tensorflow
+- 
