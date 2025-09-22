@@ -1,95 +1,109 @@
+import sys
 import os
-import requests
-import re
-import pandas as pd
-import matplotlib.pyplot as plt
-from dotenv import load_dotenv
-import argparse
+from git import Repo, GitCommandError
+from pydriller import Repository
+from collections import Counter
 
-load_dotenv() 
+# Define o diretório onde os repositórios serão clonados
+CLONE_DIR = "repositorios_clonados"
 
-def parse_github_url(repo_url):
-    match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
-    if match:
-        owner, repo_name = match.groups()
-        return owner, repo_name
-    return None, None
-
-def detect_hotspots_from_github_api(owner, repo_name):
-    token = os.getenv("API_KEY") 
-
-    headers = {}
-    if token:
-        headers["Authorization"] = f"token {token}"
+def analisar_com_pydriller(repo_path: str, top_n: int = 10):
+    """
+    Usa o PyDriller para encontrar os arquivos mais modificados.
+    Este método é mais alto nível e recomendado para análises complexas.
+    """
+    print(f"\n--- Análise com PyDriller: Top {top_n} Arquivos Mais Modificados ---")
     
-    api_url = f"https://api.github.com/repos/{owner}/{repo_name}/commits"
-    archives = {}
-    page = 1
+    # Counter é um dicionário especial para contar ocorrências
+    contador_arquivos = Counter()
+
+    # Itera sobre todos os commits do repositório
+    # PyDriller lida com todos os branches por padrão (order='topo')
+    try:
+        for commit in Repository(repo_path).traverse_commits():
+            for modificacao in commit.modified_files:
+                # O new_path representa o caminho do arquivo no commit atual
+                if modificacao.new_path:
+                    contador_arquivos[modificacao.new_path] += 1
+
+        # Imprime os N arquivos mais comuns
+        if not contador_arquivos:
+            print("Nenhum arquivo modificado encontrado.")
+            return
+
+        print(f"{'Modificações':<15} | {'Caminho do Arquivo'}")
+        print("-" * 70)
+        for caminho, contagem in contador_arquivos.most_common(top_n):
+            print(f"{contagem:<15} | {caminho}")
+
+    except Exception as e:
+        print(f"Ocorreu um erro durante a análise com PyDriller: {e}")
+
+
+def analisar_com_gitpython(repo_path: str, top_n: int = 10):
+    """
+    Usa o GitPython para encontrar os arquivos mais modificados.
+    Este método é mais baixo nível, interagindo diretamente com o Git.
+    """
+    print(f"\n--- Análise com GitPython: Top {top_n} Arquivos Mais Modificados ---")
     
-    while True:
-        response = requests.get(api_url, params={"page": page, "per_page": 100}, headers=headers)
+    contador_arquivos = Counter()
+    repo = Repo(repo_path)
+    
+    try:
+        # Itera sobre todos os commits em todos os branches
+        for commit in repo.iter_commits('--all'):
+            # commit.stats.files é um dicionário com {caminho_arquivo: stats}
+            for caminho_arquivo in commit.stats.files.keys():
+                contador_arquivos[caminho_arquivo] += 1
         
-        if response.status_code != 200:
-            print(f"Erro ao acessar a API: {response.status_code}")
-            return None
-        
-        commits = response.json()
-        if not commits:
-            break
+        # Imprime os N arquivos mais comuns
+        if not contador_arquivos:
+            print("Nenhum arquivo modificado encontrado.")
+            return
             
-        for commit_data in commits:
-            commit_msg = commit_data['commit']['message'].lower()
-            is_bugfix = any(word in commit_msg for word in ["fix", "bug", "error", "correction", "bug-fix", "bugfix"])
+        print(f"{'Modificações':<15} | {'Caminho do Arquivo'}")
+        print("-" * 70)
+        for caminho, contagem in contador_arquivos.most_common(top_n):
+            print(f"{contagem:<15} | {caminho}")
 
-            commit_detail_url = commit_data['url']
-            
-            detail_response = requests.get(commit_detail_url, headers=headers)
-            
-            if detail_response.status_code == 200:
-                detail_data = detail_response.json()
-                for file_info in detail_data.get('files', []):
-                    file_path = file_info['filename']
-                    
-                    if file_path not in archives:
-                        archives[file_path] = {"modifications": 0, "bugfixes": 0}
-                    
-                    archives[file_path]["modifications"] += 1
-                    if is_bugfix:
-                        archives[file_path]["bugfixes"] += 1
-        
-        page += 1
+    except Exception as e:
+        print(f"Ocorreu um erro durante a análise com GitPython: {e}")
 
-    df = pd.DataFrame.from_dict(archives, orient="index")
-    df.index.name = "archives"
-    
-    if not df.empty:
-        df = df.sort_values(by=["bugfixes", "modifications"], ascending=False)
-    
-    return df
 
 def main():
-    parser = argparse.ArgumentParser(description="Hotspot Detector")
-    parser.add_argument("repo", help="Caminho para o repositório Git (local ou URL)")
-    args = parser.parse_args()
-
-    repo_path = args.repo
+    """
+    Função principal do script.
+    """
+    if len(sys.argv) < 2:
+        print(f"ERRO: Forneça a URL de um repositório Git.")
+        print(f"Uso: python {sys.argv[0]} <URL_DO_REPOSITORIO>")
+        sys.exit(1)
+        
+    repo_url = sys.argv[1]
+    repo_nome = repo_url.split('/')[-1].replace('.git', '')
+    caminho_local = os.path.join(CLONE_DIR, repo_nome)
     
-    owner, repo_name = parse_github_url(repo_path)
-    if owner and repo_name:
-        df = detect_hotspots_from_github_api(owner, repo_name)
-    else:
-        print("URL do GitHub inválida.")
-        return
+    try:
+        if not os.path.exists(caminho_local):
+            print(f"Clonando repositório de '{repo_url}' para '{caminho_local}'...")
+            os.makedirs(CLONE_DIR, exist_ok=True)
+            Repo.clone_from(repo_url, caminho_local)
+        else:
+            print(f"Repositório '{repo_nome}' já existe em '{caminho_local}'.")
+        
+        # Executa as duas análises
+        analisar_com_pydriller(caminho_local)
+        analisar_com_gitpython(caminho_local)
 
-    if df is not None and not df.empty:
-        df = df.head()
-        plt.scatter(df["modifications"], df["bugfixes"])
-        plt.xlabel("Modificações")
-        plt.ylabel("Correções de Bugs")
-        plt.title("Hotspots do Repositório (Top 5)")
-        plt.show()
-    else:
-        print("Nenhum dado encontrado para gerar o gráfico.")
+    except GitCommandError as e:
+        print(f"\nERRO DO GIT: Não foi possível acessar o repositório.")
+        print(f"Detalhe do erro: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\nOcorreu um erro inesperado: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
