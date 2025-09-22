@@ -7,6 +7,9 @@ from git import Repo
 from datetime import datetime
 
 CLONE_DIR = "repositorios_clonados"
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def analisar_com_pydriler(
     repo_path: str,
@@ -18,6 +21,7 @@ def analisar_com_pydriler(
 ):
     """
     Analisa um repositório e lista os arquivos mais modificados com base nos filtros fornecidos.
+    Também gera DataFrame e gráficos.
     """
     
     pydriller_args = {'path_to_repo': repo_path}
@@ -51,16 +55,14 @@ def analisar_com_pydriler(
         termos_busca = ", ".join([f"'{termo}'" for termo in commit_msg_list])
         filtros_aplicados.append(f"Mensagem do Commit contém: {termos_busca}")
 
-
     print("\n--- Análise de Modificações de Arquivos ---")
     if filtros_aplicados:
         print("Filtros Aplicados: " + ", ".join(filtros_aplicados))
     else:
         print("Filtros Aplicados: Nenhum (analisando todo o histórico)")
 
-    print(f"\n--- Resultado da Análise ---")
-    
     contador_arquivos = Counter()
+    data_modificacoes = []
 
     try:
         repo_iterator = Repository(**pydriller_args).traverse_commits()
@@ -79,15 +81,40 @@ def analisar_com_pydriler(
                     continue
 
                 contador_arquivos[mod.new_path] += 1
+                data_modificacoes.append({'arquivo': mod.new_path, 'data': commit.committer_date})
 
         if not contador_arquivos:
             print("Nenhum arquivo modificado encontrado com os filtros aplicados.")
             return
 
-        print(f"{'Modificações':<15} | {'Caminho do Arquivo'}")
-        print("-" * 70)
-        for caminho, contagem in contador_arquivos.most_common(top_n):
-            print(f"{contagem:<15} | {caminho}")
+        # --- DataFrame ---
+        df = pd.DataFrame.from_records(data_modificacoes)
+        df_agg = df.groupby('arquivo').size().reset_index(name='modificacoes')
+        df_agg = df_agg.sort_values(by='modificacoes', ascending=False).head(top_n)
+        print("\nTop arquivos modificados:\n", df_agg)
+
+        # --- Gráfico de barras dos top arquivos ---
+        plt.figure(figsize=(10,6))
+        sns.barplot(data=df_agg, x='modificacoes', y='arquivo', palette='viridis')
+        plt.title('Top Arquivos Mais Modificados')
+        plt.xlabel('Número de Modificações')
+        plt.ylabel('Arquivo')
+        plt.tight_layout()
+        plt.show()
+
+        # --- Distribuição de modificações ao longo do tempo ---
+        df['data'] = pd.to_datetime(df['data'], utc=True)
+        df_time = df.groupby(df['data'].dt.to_period('M')).size().reset_index(name='modificacoes')
+        df_time['data'] = df_time['data'].dt.to_timestamp()
+
+        plt.figure(figsize=(10,5))
+        sns.lineplot(data=df_time, x='data', y='modificacoes', marker='o')
+        plt.title('Distribuição de Modificações ao Longo do Tempo')
+        plt.xlabel('Data')
+        plt.ylabel('Número de Modificações')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
 
     except Exception as e:
         print(f"Erro durante a análise com PyDriller: {e}")
