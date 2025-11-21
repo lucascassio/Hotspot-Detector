@@ -37,4 +37,4 @@ jobs:
       env:
         MPLBACKEND: Agg 
       run: |
-        pytest -v
+        python -m pytest -v
