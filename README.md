@@ -1,30 +1,82 @@
-# Hotspot Detector — Mineração de Repositórios de Software
+# Hotspot Detector 
 
-## 1) Membros do grupo
+Membros do grupo
 - Lucas Cassio Costa  
 - Luís Eduardo Jorge Almeida 
 - Nicolas Von Dolinger Moreira Rocha
-- Bruna Dias
+- Bruna Andrade Dias
+
+O **Hotspot Detector** é uma ferramenta de linha de comando (CLI) projetada para analisar o histórico de commits de repositórios Git e identificar arquivos problemáticos, conhecidos como *hotspots*.
+
+A premissa da ferramenta é que arquivos que sofrem muitas alterações frequentes ou muitas correções de bugs têm maior probabilidade de conter dívida técnica e instabilidade.
 
 ---
 
-## 2) Explicação do sistema
-O **Hotspot Detector** é uma ferramenta de linha de comando que analisa o histórico de commits de um repositório Git e identifica os arquivos mais problemáticos.  
+## 🎯 Objetivo
 
-**Entrada:** caminho para o repositório (`repo.git`).  
-**Saída:** lista de arquivos mais modificados e com mais commits de correção de bugs.  
+Fornecer uma visão rápida e analítica sobre a saúde do código, permitindo que desenvolvedores identifiquem:
+1.  Quais arquivos são modificados com mais frequência.
+2.  Onde estão concentradas as correções de bugs.
+3.  Como a atividade do repositório se comporta ao longo do tempo.
 
-A ideia é que quanto mais um arquivo sofre mudanças e correções, maior a chance de ele ser um ponto crítico do sistema (um *hotspot*).  
+**Entrada:** URL de um repositório Git (ex: `https://github.com/owner/repo`).  
+**Saída:** Relatório HTML contendo dados e gráficos a respeito do repositório.
 
 ---
 
-## 3) Tecnologias possíveis
-- **Python** para implementação.
-- **GitPython** e **PyDriller** para ler histórico de commits.  
-- **pandas** para organizar e gerar a lista de arquivos.  
-- **argparse** para criar a interface de linha de comando.
+## 🛠️ Tecnologias Utilizadas
 
-## 4) Repositórios Analisados
-- https://github.com/huggingface/transformers
-- https://github.com/tensorflow/tensorflow
-- 
+A ferramenta foi desenvolvida em **Python** e utiliza as seguintes bibliotecas principais:
+
+* **PyDriller & GitPython:** Para mineração e extração de dados do histórico de commits.
+* **Pandas:** Para organização, filtragem e processamento dos dados.
+* **Matplotlib & Seaborn:** Para a geração de gráficos estatísticos e visualização de dados.
+* **Argparse:** Para a construção da interface de linha de comando.
+* **Pytest:** Para a execução de testes automatizados.
+
+---
+
+## 🚀 Como Instalar
+
+Pré-requisitos: Você precisa ter o **Python 3.10+** e o **Git** instalados na sua máquina.
+
+1.  **Clone o repositório:**
+    ```bash
+    git clone [https://github.com/SEU_USUARIO/Hotspot-Detector.git](https://github.com/SEU_USUARIO/Hotspot-Detector.git)
+    cd Hotspot-Detector
+    ```
+
+2.  **Crie e ative um ambiente virtual:**
+    * *Windows:*
+        ```bash
+        python -m venv venv
+        .\venv\Scripts\activate
+        ```
+    * *Linux/Mac:*
+        ```bash
+        python3 -m venv venv
+        source venv/bin/activate
+        ```
+
+3.  **Instale as dependências:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+---
+
+## 💻 Como Utilizar
+
+A sintaxe básica para rodar a ferramenta é:
+
+```bash
+python fetch_repositories.py [URL_DO_REPO] [OPCOES]
+```
+
+Argumentos opcionais
+
+    --top : Define quantos arquivos exibir no ranking final. (Padrão: 10)
+    -m, --commit : Filtra commits cuja mensagem contenha uma ou mais palavras-chave. 
+    --type : Analisa apenas arquivos com uma extensão específica.
+    --desde : Data inicial da análise (Formato: AAAA-MM-DD).
+    --ate : Data final da análise (Formato: AAAA-MM-DD).
