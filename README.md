@@ -80,3 +80,21 @@ Argumentos opcionais
     --type : Analisa apenas arquivos com uma extensão específica.
     --desde : Data inicial da análise (Formato: AAAA-MM-DD).
     --ate : Data final da análise (Formato: AAAA-MM-DD).
+
+
+## 🛠️ Execução dos testes localmente
+
+Para executar os testes localmente, basta seguir os passos:
+1. **Preparação do ambiente** 
+
+    Certifique-se de que realizou corretamente os passos da seção **Como instalar**
+
+2. **Entre na pasta raiz do projeto**
+    ```bash
+    cd Hotspot-detector
+    ```
+
+3. **Execute o comando**
+    ```bash
+    pytest -v test_detector.py
+    ```
