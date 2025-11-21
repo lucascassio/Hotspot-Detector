@@ -1,0 +1,7 @@
+pydriller
+GitPython
+pandas
+matplotlib
+seaborn
+pytest
+pytest-mock
